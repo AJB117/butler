@@ -1,5 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Session } from "../types";
+import type {
+  BackendStatus,
+  OpenSessionResult,
+  Session,
+} from "../types";
 
 const GIB = 1024 ** 3;
 
@@ -92,12 +96,51 @@ export function getBackendMode(): BackendMode {
     : "browser-preview";
 }
 
+export async function getBackendStatus(): Promise<BackendStatus> {
+  if (getBackendMode() === "browser-preview") {
+    return {
+      configured: true,
+      connected: true,
+      configPath: "Browser preview",
+      sshTarget: null,
+      controlPath: null,
+      activeTunnels: 0,
+      message: null,
+    };
+  }
+
+  return invoke<BackendStatus>("backend_status");
+}
+
 export async function listSessions(): Promise<Session[]> {
   if (getBackendMode() === "browser-preview") {
     return browserSessions.map(cloneSession);
   }
 
   return invoke<Session[]>("list_sessions");
+}
+
+export async function openSession(sessionId: string): Promise<OpenSessionResult> {
+  if (getBackendMode() === "browser-preview") {
+    return {
+      sessionId,
+      localPort: 8080,
+      url: "http://127.0.0.1:8080/",
+      remoteHost: "preview-compute-node",
+      remotePort: 3450,
+      password: null,
+    };
+  }
+
+  return invoke<OpenSessionResult>("open_session", { sessionId });
+}
+
+export async function closeSession(sessionId: string): Promise<void> {
+  if (getBackendMode() === "browser-preview") {
+    return;
+  }
+
+  await invoke("close_session", { sessionId });
 }
 
 export async function killSession(sessionId: string): Promise<Session[]> {

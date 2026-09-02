@@ -48,3 +48,26 @@ pub struct RuntimeInfo {
     pub remaining_seconds: Option<u64>,
     pub time_limit_seconds: Option<u64>,
 }
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenSessionResult {
+    pub session_id: String,
+    pub local_port: u16,
+    pub url: String,
+    pub remote_host: String,
+    pub remote_port: u16,
+    pub password: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BackendStatus {
+    pub configured: bool,
+    pub connected: bool,
+    pub config_path: String,
+    pub ssh_target: Option<String>,
+    pub control_path: Option<String>,
+    pub active_tunnels: usize,
+    pub message: Option<String>,
+}
