@@ -17,13 +17,16 @@
 
 $${\color{red}\textbf{WARNING: Fully vibe-coded app. Use at your own risk.}}$$
 
-Butler is a Tauri desktop shell for discovering, opening, and terminating remote Code Server sessions launched through Open OnDemand.
+Butler is a Tauri desktop shell for discovering, opening, organizing, and terminating remote Code Server sessions launched through Open OnDemand.
 
 The current application can:
 
 - reuse the machine's existing OpenSSH configuration, keys, agent, and jump-host rules;
 - discover active Open OnDemand sessions by correlating OOD's session database with `squeue`;
 - display scheduler-reported CPU, memory, GPU, partition, and remaining runtime;
+- create and edit local projects, including the default project and its remote-folder label;
+- move sessions between projects with drag-and-drop or a three-dot move menu;
+- persist projects and session assignments locally across restarts;
 - retrieve `connection.yml` only when a session is opened;
 - establish and reuse dynamic localhost SSH tunnels;
 - embed the selected Code Server editor in a native Tauri child WebView;
@@ -33,7 +36,7 @@ The current application can:
 - resize, hide, and clean up child WebViews as the window and session list change; and
 - cancel the remote allocation with `scancel` from the trash action.
 
-Friendly-name persistence and project metadata remain separate follow-on slices.
+Friendly-name persistence remains a separate follow-on slice.
 
 ## Stack
 
@@ -168,6 +171,14 @@ Butler does not probe every historical `connection.yml` file. Each refresh perfo
 
 A routine refresh never reads or returns Code Server passwords.
 
+## Local project organization
+
+Butler stores its project list and session assignments in `projects.json` beside the normal Tauri application configuration. This file is created automatically and contains only local organizational metadata: project names, optional remote-folder labels, and OOD session IDs.
+
+The default project starts as **Unassigned**. It can be renamed and given a remote-folder label, but it cannot be deleted. Other projects can be created, edited, and deleted from the sidebar. Deleting a project returns its sessions to the default project.
+
+Move a session by dragging its card onto a project or by using the card's three-dot menu. Empty projects remain visible as drop targets. These operations do not move remote files, alter the Slurm allocation, or change Open OnDemand; they only change Butler's local organization.
+
 ## How opening an editor works
 
 Selecting a running session performs the following sequence:
@@ -197,14 +208,19 @@ The frontend has a narrow Tauri command surface:
 - `open_session(session_id)`
 - `close_session(session_id)`
 - `kill_session(session_id)`
+- `project_snapshot()`
+- `create_project(name, remote_path)`
+- `update_project(project_id, name, remote_path)`
+- `delete_project(project_id)`
+- `assign_session_project(session_id, project_id)`
 
-The frontend cannot submit arbitrary local or remote commands. Scheduler cancellation uses the job ID from Butler's trusted OOD/Slurm correlation cache rather than accepting a raw job ID from JavaScript.
+The frontend cannot submit arbitrary local or remote commands. Scheduler cancellation uses the job ID from Butler's trusted OOD/Slurm correlation cache rather than accepting a raw job ID from JavaScript. Project commands only read or update Butler's local `projects.json` file.
 
 ## Credential handling
 
 Butler does not write Code Server passwords to disk or include them in refresh results. A password is read only by `open_session`, delivered to the local editor bootstrap through a targeted in-memory event, placed briefly in a hidden POST form, and cleared from Butler's JavaScript objects after dispatch.
 
-The resulting Code Server cookie remains inside that child WebView's ephemeral isolated profile. Local configuration should contain cluster routing only, not passwords or OOD session secrets.
+The resulting Code Server cookie remains inside that child WebView's ephemeral isolated profile. Local configuration and project metadata should contain cluster routing and organizational labels only, not passwords or OOD session secrets.
 
 ## Run the desktop app
 
@@ -220,7 +236,7 @@ Selecting a running session should open Code Server directly inside the workspac
 npm run dev
 ```
 
-Open `http://localhost:1420`. Browser mode uses demo sessions and displays a desktop-required message because Tauri child WebViews, IPC, and SSH are unavailable in a normal browser tab.
+Open `http://localhost:1420`. Browser mode uses demo sessions and displays a desktop-required message because Tauri child WebViews, IPC, and SSH are unavailable in a normal browser tab. Project organization is still available in browser preview and is stored in local browser storage.
 
 ## Check and build
 
@@ -236,9 +252,12 @@ Vite builds both `index.html` for the main UI and `editor.html` for the local ch
 
 - `src/` — React application shell and Tauri IPC client
 - `src/components/EditorHost.tsx` — DOM host and editor opening/error state
+- `src/components/ProjectDialog.tsx` — create, edit, and delete project dialog
 - `src/lib/editorWebviews.ts` — child-WebView cache, sizing, switching, and cleanup
+- `src/lib/projects.ts` — project commands, session decoration, and browser-preview fallback
 - `src/editor.ts` and `editor.html` — local Code Server authentication bootstrap
 - `src-tauri/src/config.rs` — config-file and environment loading
+- `src-tauri/src/projects.rs` — local project and session-assignment persistence
 - `src-tauri/src/ssh.rs` — controlled OpenSSH execution and forwarding
 - `src-tauri/src/cluster.rs` — OOD/Slurm discovery, parsing, tunnels, and cancellation
 - `src-tauri/src/commands.rs` — narrow asynchronous Tauri command surface

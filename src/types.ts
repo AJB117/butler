@@ -36,10 +36,25 @@ export interface Session {
   runtime: RuntimeInfo;
 }
 
-export interface SessionGroup {
-  key: string;
+export interface Project {
+  id: number;
   name: string;
   remotePath: string | null;
+  sortOrder: number;
+  isDefault: boolean;
+}
+
+export interface ProjectSnapshot {
+  projects: Project[];
+  assignments: Record<string, number>;
+}
+
+export interface SessionGroup {
+  key: string;
+  projectId: number;
+  name: string;
+  remotePath: string | null;
+  isDefault: boolean;
   sessions: Session[];
 }
 

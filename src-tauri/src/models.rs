@@ -1,4 +1,6 @@
-use serde::Serialize;
+use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -70,4 +72,21 @@ pub struct BackendStatus {
     pub control_path: Option<String>,
     pub active_tunnels: usize,
     pub message: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Project {
+    pub id: i64,
+    pub name: String,
+    pub remote_path: Option<String>,
+    pub sort_order: i64,
+    pub is_default: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectSnapshot {
+    pub projects: Vec<Project>,
+    pub assignments: HashMap<String, i64>,
 }
