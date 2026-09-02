@@ -1,4 +1,19 @@
-# Butler
+<p align="center">
+  <img src="./docs/assets/butler.svg" alt="Butler — Code Server session manager" width="620" />
+</p>
+
+<p align="center">
+  <img alt="Tauri 2" src="https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white" />
+  <img alt="Rust" src="https://img.shields.io/badge/Rust-stable-000000?logo=rust&logoColor=white" />
+  <img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=101722" />
+  <img alt="TypeScript 6" src="https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white" />
+  <img alt="Vite 8" src="https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white" />
+  <img alt="OpenSSH" src="https://img.shields.io/badge/OpenSSH-system_client-2F93E0?logo=openssh&logoColor=white" />
+  <img alt="Slurm" src="https://img.shields.io/badge/Slurm-scheduler-5DE0A3?logoColor=white" />
+  <img alt="Open OnDemand" src="https://img.shields.io/badge/Open_OnDemand-session_source-79D4FF?logoColor=071018" />
+</p>
+
+<p align="center"><sub>A tidy desktop shell for remote Code Server sessions.</sub></p>
 
 Butler is a Tauri desktop shell for discovering, opening, and terminating remote Code Server sessions launched through Open OnDemand.
 
