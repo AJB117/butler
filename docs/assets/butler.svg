@@ -1,0 +1,52 @@
+<svg width="720" height="240" viewBox="0 0 720 240" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Butler</title>
+  <desc id="desc">A friendly Code Server session manager logo: a terminal window served on a tray beside the Butler wordmark.</desc>
+
+  <defs>
+    <linearGradient id="panel" x1="56" y1="18" x2="650" y2="224" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#101722"/>
+      <stop offset="1" stop-color="#080C12"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="70" y1="56" x2="176" y2="184" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9EE3FF"/>
+      <stop offset="1" stop-color="#32B8F5"/>
+    </linearGradient>
+    <filter id="glow" x="24" y="24" width="200" height="200" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+  </defs>
+
+  <rect x="1" y="1" width="718" height="238" rx="30" fill="url(#panel)"/>
+  <rect x="1.5" y="1.5" width="717" height="237" rx="29.5" stroke="#FFFFFF" stroke-opacity="0.08"/>
+
+  <circle cx="121" cy="120" r="74" fill="#32B8F5" fill-opacity="0.16" filter="url(#glow)"/>
+  <rect x="48" y="46" width="146" height="146" rx="38" fill="url(#accent)"/>
+  <rect x="48.5" y="46.5" width="145" height="145" rx="37.5" stroke="#FFFFFF" stroke-opacity="0.30"/>
+
+  <!-- Terminal on a serving tray -->
+  <rect x="76" y="81" width="90" height="58" rx="12" fill="#071018"/>
+  <path d="M90 101L100 110L90 119" stroke="#79D4FF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M111 120H132" stroke="#5DE0A3" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="91" cy="92" r="3" fill="#FF7F87"/>
+  <circle cx="101" cy="92" r="3" fill="#F6C460"/>
+  <circle cx="111" cy="92" r="3" fill="#5DE0A3"/>
+  <path d="M67 146H175" stroke="#071018" stroke-width="7" stroke-linecap="round"/>
+  <path d="M88 154H154" stroke="#071018" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- Tiny bow tie -->
+  <path d="M104 165L118 173L104 181V165Z" fill="#071018"/>
+  <path d="M138 165L124 173L138 181V165Z" fill="#071018"/>
+  <rect x="117" y="168" width="8" height="10" rx="3" fill="#071018"/>
+
+  <!-- Sparkles -->
+  <path d="M57 74V62M51 68H63" stroke="#E7F7FF" stroke-width="3" stroke-linecap="round"/>
+  <path d="M182 160V150M177 155H187" stroke="#E7F7FF" stroke-width="3" stroke-linecap="round" opacity="0.75"/>
+
+  <!-- Wordmark -->
+  <text x="238" y="111" fill="#F1F6FB" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="58" font-weight="800" letter-spacing="-2.6">butler</text>
+  <text x="241" y="145" fill="#8B98A9" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="19" font-weight="500">Code Server, served neatly.</text>
+
+  <rect x="239" y="164" width="204" height="30" rx="15" fill="#FFFFFF" fill-opacity="0.035" stroke="#FFFFFF" stroke-opacity="0.08"/>
+  <circle cx="257" cy="179" r="4" fill="#5DE0A3"/>
+  <text x="270" y="184" fill="#AEB9C8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="13" font-weight="650" letter-spacing="0.15">remote session manager</text>
+</svg>
