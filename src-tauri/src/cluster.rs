@@ -766,7 +766,7 @@ fn parse_slurm_duration(value: &str) -> Option<u64> {
         None => (0, value),
     };
     let clock = clock.split(':').collect::<Vec<_>>();
-    let (hours, minutes, seconds) = match clock.as_slice() {
+    let (hours, minutes, seconds): (u64, u64, u64) = match clock.as_slice() {
         [minutes, seconds] => (0, minutes.parse().ok()?, seconds.parse().ok()?),
         [hours, minutes, seconds] => (
             hours.parse().ok()?,

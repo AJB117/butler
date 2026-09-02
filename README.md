@@ -2,17 +2,21 @@
 
 Butler is a Tauri desktop shell for discovering, opening, and terminating remote Code Server sessions launched through Open OnDemand.
 
-The current application includes a real OpenSSH, Slurm, and Open OnDemand backend. It can:
+The current application can:
 
 - reuse the machine's existing OpenSSH configuration, keys, agent, and jump-host rules;
-- discover active OOD sessions by correlating OOD's session database with `squeue`;
+- discover active Open OnDemand sessions by correlating OOD's session database with `squeue`;
 - display scheduler-reported CPU, memory, GPU, partition, and remaining runtime;
-- fetch `connection.yml` only when a session is opened;
+- retrieve `connection.yml` only when a session is opened;
 - establish and reuse dynamic localhost SSH tunnels;
-- close tunnels when sessions disappear or the app exits; and
+- embed the selected Code Server editor in a native Tauri child WebView;
+- authenticate Code Server without placing its generated password in the URL;
+- keep up to five recently used editors warm for fast session switching;
+- isolate each editor in an ephemeral browser profile so localhost authentication cookies do not collide;
+- resize, hide, and clean up child WebViews as the window and session list change; and
 - cancel the remote allocation with `scancel` from the trash action.
 
-Friendly-name persistence, project metadata, the child Code Server WebView, and automatic Code Server login remain separate follow-on slices. The Rust `open_session` command already returns the local tunnel URL and the ephemeral Code Server password needed for that integration.
+Friendly-name persistence and project metadata remain separate follow-on slices.
 
 ## Stack
 
@@ -50,7 +54,7 @@ npm install
 
 ## Configure the cluster backend
 
-Butler reads JSON configuration from the Tauri application-config directory as `config.json`. When configuration is missing, the app's error banner reports the exact expected path.
+Butler reads JSON configuration from the Tauri application-config directory as `config.json`. When configuration is missing, the app reports the exact expected path.
 
 For development, it is usually easier to keep an ignored local file and point Butler at it:
 
@@ -122,13 +126,13 @@ The following environment variables override the file:
 
 ### Interactive MFA
 
-Background SSH commands cannot answer prompts that require a terminal. Key- or agent-based authentication works directly. When the cluster requires terminal-only MFA, configure an explicit absolute `controlPath`, authenticate a master connection once, and let Butler reuse it:
+Background SSH commands cannot answer prompts that require a terminal. Key- or agent-based authentication works directly. When the cluster requires terminal-only MFA, configure a short absolute `controlPath`, authenticate a master connection once, and let Butler reuse it:
 
 ```bash
 ssh -M -N -f \
   -o ControlMaster=yes \
   -o ControlPersist=600 \
-  -o ControlPath=/absolute/path/to/butler-%C.sock \
+  -o ControlPath=/tmp/butler-%C \
   your-cluster-ssh-alias
 ```
 
@@ -145,14 +149,25 @@ Butler does not probe every historical `connection.yml` file. Each refresh perfo
 
 A routine refresh never reads or returns Code Server passwords.
 
-Opening a running session performs a separate on-demand operation:
+## How opening an editor works
+
+Selecting a running session performs the following sequence:
 
 1. locate the session's staged directory in either the standard or per-cluster OOD layout;
-2. read its `connection.yml`;
-3. parse the host, port, optional path, and generated password;
+2. read its `connection.yml` over SSH;
+3. parse the compute host, port, optional path, and generated password;
 4. reserve an unused localhost port;
-5. start `ssh -N -L` with `ExitOnForwardFailure=yes`; and
-6. return a localhost URL for the future child WebView.
+5. start `ssh -N -L` with `ExitOnForwardFailure=yes`;
+6. create a child WebView over the editor region;
+7. send the localhost URL and password to a bundled local bootstrap page through an in-memory Tauri event;
+8. submit the normal Code Server login form; and
+9. navigate the child WebView to the live editor.
+
+The bootstrap accepts only loopback HTTP or HTTPS URLs. The password is sent as form data rather than placed in the URL, persisted in Butler's configuration, or logged. Remote Code Server pages are not granted Butler's Tauri IPC permissions.
+
+Each child WebView uses an isolated, ephemeral browser profile. This is necessary because browser cookies are scoped to the localhost host rather than its port; separate profiles prevent one tunneled Code Server session from overwriting another session's authentication cookie.
+
+Butler caches the five most recently used editors. Switching sessions hides the current child WebView and reveals the selected cached WebView without reloading Code Server. Evicting an editor closes both its WebView and SSH tunnel. Expired or killed sessions are pruned automatically.
 
 ## Backend commands
 
@@ -168,9 +183,9 @@ The frontend cannot submit arbitrary local or remote commands. Scheduler cancell
 
 ## Credential handling
 
-Butler does not write Code Server passwords to disk or include them in refresh results. A password is read only by `open_session`, returned through Tauri IPC for the upcoming authentication step, and not retained in the tunnel registry. It is never included in command strings or logs.
+Butler does not write Code Server passwords to disk or include them in refresh results. A password is read only by `open_session`, delivered to the local editor bootstrap through a targeted in-memory event, placed briefly in a hidden POST form, and cleared from Butler's JavaScript objects after dispatch.
 
-Local configuration should contain cluster routing only, not passwords or OOD session secrets.
+The resulting Code Server cookie remains inside that child WebView's ephemeral isolated profile. Local configuration should contain cluster routing only, not passwords or OOD session secrets.
 
 ## Run the desktop app
 
@@ -178,13 +193,15 @@ Local configuration should contain cluster routing only, not passwords or OOD se
 npm run tauri dev
 ```
 
+Selecting a running session should open Code Server directly inside the workspace. The first selection creates a tunnel and child WebView; subsequent selections of a cached session should be nearly immediate.
+
 ## Run the UI in a browser
 
 ```bash
 npm run dev
 ```
 
-Open `http://localhost:1420`. Browser mode still uses local demo sessions because Tauri IPC and SSH are unavailable outside the desktop runtime.
+Open `http://localhost:1420`. Browser mode uses demo sessions and displays a desktop-required message because Tauri child WebViews, IPC, and SSH are unavailable in a normal browser tab.
 
 ## Check and build
 
@@ -194,20 +211,31 @@ cargo test --manifest-path src-tauri/Cargo.toml
 npm run tauri build
 ```
 
-Generated frontend assets are written to `dist/`; Rust artifacts and installers are written below `src-tauri/target/`.
+Vite builds both `index.html` for the main UI and `editor.html` for the local child-WebView bootstrap. Generated frontend assets are written to `dist/`; Rust artifacts and installers are written below `src-tauri/target/`.
 
 ## Repository guide
 
 - `src/` — React application shell and Tauri IPC client
+- `src/components/EditorHost.tsx` — DOM host and editor opening/error state
+- `src/lib/editorWebviews.ts` — child-WebView cache, sizing, switching, and cleanup
+- `src/editor.ts` and `editor.html` — local Code Server authentication bootstrap
 - `src-tauri/src/config.rs` — config-file and environment loading
 - `src-tauri/src/ssh.rs` — controlled OpenSSH execution and forwarding
 - `src-tauri/src/cluster.rs` — OOD/Slurm discovery, parsing, tunnels, and cancellation
 - `src-tauri/src/commands.rs` — narrow asynchronous Tauri command surface
 - `src-tauri/src/models.rs` — serializable backend models
+- `src-tauri/capabilities/default.json` — permissions for the main UI and local child bootstrap
 - `config.example.json` — cluster configuration template
 - `DESIGN.md` — product and implementation plan
 - `AGENTS.md` — contributor guidelines
 
-## Cluster-specific information still needed
+## Troubleshooting
 
-To test Butler against a particular university deployment, supply the SSH target or alias and the exact OOD app token. If the defaults do not discover the session, the useful diagnostics are a **redacted** OOD database record and a **redacted** `connection.yml`; remove the password and any other secret before sharing them.
+If a child editor does not open, first verify that session refresh still works and inspect the error shown in the workspace. Useful checks are:
+
+```bash
+ssh your-cluster-ssh-alias '/bin/bash -lc "command -v squeue; command -v scancel"'
+ssh your-cluster-ssh-alias true
+```
+
+For cluster-specific discovery problems, provide the exact OOD app token plus a redacted OOD database record and redacted `connection.yml`. Remove the password and any other secret before sharing them.

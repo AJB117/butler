@@ -11,6 +11,7 @@ import {
 import { groupSessions } from "./lib/session";
 import type { Session } from "./types";
 import "./app.css";
+import "./editor.css";
 
 export default function App() {
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -67,6 +68,10 @@ export default function App() {
   }, [selectedSessionId, sessions]);
 
   const groups = useMemo(() => groupSessions(sessions), [sessions]);
+  const activeSessionIds = useMemo(
+    () => sessions.map((session) => session.oodSessionId),
+    [sessions],
+  );
   const selectedSession =
     sessions.find((session) => session.oodSessionId === selectedSessionId) ?? null;
 
@@ -176,12 +181,19 @@ export default function App() {
           />
           <span>
             <strong>{connectionLabel}</strong>
-            <small>Slurm discovery; tunnels open only when requested.</small>
+            <small>Slurm discovery; editors tunnel on first selection.</small>
           </span>
         </footer>
       </aside>
 
-      <Workspace session={selectedSession} nowMs={nowMs} snapshotMs={snapshotMs} />
+      <Workspace
+        session={selectedSession}
+        activeSessionIds={activeSessionIds}
+        backendMode={backendMode}
+        nowMs={nowMs}
+        snapshotMs={snapshotMs}
+        suspended={killTarget !== null}
+      />
 
       <KillSessionDialog
         session={killTarget}
