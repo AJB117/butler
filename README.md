@@ -28,6 +28,8 @@ Friendly-name persistence and project metadata remain separate follow-on slices.
 - the operating system's OpenSSH client
 - Slurm and Open OnDemand on the remote cluster
 
+Tauri's multi-WebView API is currently gated behind its `unstable` Cargo feature. Butler enables that feature in `src-tauri/Cargo.toml`; removing it will cause child WebView creation to fail at runtime.
+
 ## Prerequisites
 
 Install the platform prerequisites from the [Tauri prerequisites guide](https://v2.tauri.app/start/prerequisites/). Development also requires:
