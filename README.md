@@ -15,6 +15,8 @@
 
 <p align="center"><sub>A tidy desktop shell for remote Code Server sessions.</sub></p>
 
+$${\color{red}\textbf{WARNING: Fully vibe-coded app. Use at your own risk.}}$$
+
 Butler is a Tauri desktop shell for discovering, opening, and terminating remote Code Server sessions launched through Open OnDemand.
 
 The current application can:
