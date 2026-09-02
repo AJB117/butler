@@ -37,9 +37,12 @@ esac
 record_separator=$(printf '\036')
 field_separator=$(printf '\037')
 printf 'BUTLER_DISCOVERY_V1\n'
-db_root="$root/batch_connect/db"
+base="$root/batch_connect"
 
-if [ -d "$db_root" ]; then
+emit_db() {
+  db_root=$1
+  [ -d "$db_root" ] || return 0
+
   for file in "$db_root"/*; do
     [ -f "$file" ] || continue
     [ -r "$file" ] || continue
@@ -50,16 +53,25 @@ if [ -d "$db_root" ]; then
     printf '%sO%s%s%s' "$record_separator" "$field_separator" "${file##*/}" "$field_separator"
     cat "$file"
   done
-fi
+}
+
+emit_db "$base/db"
+for db_root in "$base"/*/db; do
+  [ -d "$db_root" ] || continue
+  emit_db "$db_root"
+done
 
 user=${USER:-$(id -un)}
 tmp="${TMPDIR:-/tmp}/butler-squeue-$$"
 trap 'rm -f "$tmp"' EXIT HUP INT TERM
 
-"$squeue_bin" \
+SLURM_BITSTR_LEN=0 "$squeue_bin" \
   --noheader \
+  --all \
+  --array \
+  --noconvert \
   --user="$user" \
-  --states=PENDING,RUNNING,CONFIGURING,COMPLETING \
+  --states=all \
   --format='%i|%T|%N|%D|%C|%m|%L|%l|%P|%b' \
   > "$tmp"
 
@@ -230,15 +242,24 @@ impl OodSlurmBackend {
         let snapshot = parse_discovery_output(&output)?;
         let mut sessions = Vec::new();
         let mut cache = HashMap::new();
+        let mut seen_session_ids = HashSet::new();
 
         for ood in snapshot.ood_sessions {
-            if ood.cache_completed || !is_code_server_session(&ood, &self.config.ood.app_tokens)
+            if !seen_session_ids.insert(ood.id.clone())
+                || ood.cache_completed
+                || !is_code_server_session(&ood, &self.config.ood.app_tokens)
             {
                 continue;
             }
             let Some(job) = find_job(&snapshot.jobs, &ood.job_id).cloned() else {
                 continue;
             };
+            if matches!(
+                job.state,
+                SessionState::Completed | SessionState::Cancelled | SessionState::Expired
+            ) {
+                continue;
+            }
 
             sessions.push(build_session(&ood, &job));
             cache.insert(ood.id.clone(), CachedSession { ood, job });
@@ -701,9 +722,21 @@ fn humanize_token(token: &str) -> String {
 
 fn parse_session_state(value: &str) -> SessionState {
     match value.trim().to_ascii_uppercase().as_str() {
-        "PD" | "PENDING" | "CF" | "CONFIGURING" => SessionState::Pending,
-        "R" | "RUNNING" => SessionState::Running,
-        "CG" | "COMPLETING" => SessionState::Cancelling,
+        "PD" | "PENDING" | "CF" | "CONFIGURING" | "RF" | "REQUEUE_FED" | "RQ"
+        | "REQUEUED" | "RS" | "RESIZING" => SessionState::Pending,
+        "R" | "RUNNING" | "S" | "SUSPENDED" | "ST" | "STOPPED" => {
+            SessionState::Running
+        }
+        "CG" | "COMPLETING" | "SI" | "SIGNALING" | "SO" | "STAGE_OUT" => {
+            SessionState::Cancelling
+        }
+        "CA" | "CANCELLED" => SessionState::Cancelled,
+        "TO" | "TIMEOUT" => SessionState::Expired,
+        "BF" | "BOOT_FAIL" | "CD" | "COMPLETED" | "DL" | "DEADLINE" | "F"
+        | "FAILED" | "NF" | "NODE_FAIL" | "OOM" | "OUT_OF_MEMORY" | "PR"
+        | "PREEMPTED" | "RV" | "REVOKED" | "SE" | "SPECIAL_EXIT" => {
+            SessionState::Completed
+        }
         _ => SessionState::Unknown,
     }
 }
@@ -1157,6 +1190,45 @@ mod tests {
         assert_eq!(snapshot.ood_sessions.len(), 1);
         assert_eq!(snapshot.jobs.len(), 1);
         assert_eq!(snapshot.jobs[0].state, SessionState::Running);
+    }
+
+    #[test]
+    fn discovery_protocol_keeps_multiple_gpu_sessions() {
+        let output = concat!(
+            "BUTLER_DISCOVERY_V1\n",
+            "\u{1e}O\u{1f}one\u{1f}",
+            r#"{"id":"one","cluster_id":"rivanna","job_id":"101","token":"sys/bc_code_server","title":"Code Server","cache_completed":false}"#,
+            "\u{1e}O\u{1f}two\u{1f}",
+            r#"{"id":"two","cluster_id":"rivanna","job_id":"102","token":"sys/bc_code_server","title":"Code Server","cache_completed":false}"#,
+            "\u{1e}O\u{1f}three\u{1f}",
+            r#"{"id":"three","cluster_id":"rivanna","job_id":"103","token":"sys/bc_code_server","title":"Code Server","cache_completed":false}"#,
+            "\u{1e}S\u{1f}101|RUNNING|udc-a1|1|8|64G|11:00:00|12:00:00|gpu|gres/gpu:a100:2",
+            "\u{1e}S\u{1f}102|PENDING||1|8|64G|12:00:00|12:00:00|gpu|gres/gpu:a100:2",
+            "\u{1e}S\u{1f}103|SUSPENDED|udc-a3|1|8|64G|10:00:00|12:00:00|gpu|gres/gpu:a100:2",
+            "\u{1e}"
+        );
+        let snapshot = parse_discovery_output(output.as_bytes()).unwrap();
+        let sessions = snapshot
+            .ood_sessions
+            .iter()
+            .filter_map(|ood| find_job(&snapshot.jobs, &ood.job_id).map(|job| build_session(ood, job)))
+            .collect::<Vec<_>>();
+
+        assert_eq!(sessions.len(), 3);
+        assert!(sessions.iter().all(|session| {
+            session.hardware.gpus.len() == 1 && session.hardware.gpus[0].count == 2
+        }));
+        assert_eq!(sessions[2].state, SessionState::Running);
+    }
+
+    #[test]
+    fn parses_extended_active_and_terminal_slurm_states() {
+        assert_eq!(parse_session_state("REQUEUED"), SessionState::Pending);
+        assert_eq!(parse_session_state("SUSPENDED"), SessionState::Running);
+        assert_eq!(parse_session_state("STAGE_OUT"), SessionState::Cancelling);
+        assert_eq!(parse_session_state("CANCELLED"), SessionState::Cancelled);
+        assert_eq!(parse_session_state("TIMEOUT"), SessionState::Expired);
+        assert_eq!(parse_session_state("COMPLETED"), SessionState::Completed);
     }
 
     #[test]
