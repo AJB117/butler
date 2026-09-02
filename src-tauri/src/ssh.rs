@@ -43,19 +43,12 @@ impl SshClient {
     }
 
     pub fn run(&self, program: &str, args: &[String]) -> Result<Vec<u8>, String> {
-        let mut remote_parts = Vec::with_capacity(args.len() + 1);
-        remote_parts.push(program.to_owned());
-        remote_parts.extend(args.iter().cloned());
-        let remote_command = shell_join(&remote_parts)?;
-
+        let remote_command = login_shell_command(program, args)?;
         self.execute(remote_command, None)
     }
 
     pub fn run_script(&self, script: &str, args: &[String]) -> Result<Vec<u8>, String> {
-        let mut remote_parts = vec!["sh".to_owned(), "-s".to_owned(), "--".to_owned()];
-        remote_parts.extend(args.iter().cloned());
-        let remote_command = shell_join(&remote_parts)?;
-
+        let remote_command = login_shell_script_command(args)?;
         self.execute(remote_command, Some(script.as_bytes()))
     }
 
@@ -186,6 +179,31 @@ struct ProcessOutput {
     status: ExitStatus,
     stdout: Vec<u8>,
     stderr: Vec<u8>,
+}
+
+fn login_shell_command(program: &str, args: &[String]) -> Result<String, String> {
+    let mut remote_parts = Vec::with_capacity(args.len() + 5);
+    remote_parts.extend([
+        "/bin/bash".to_owned(),
+        "-lc".to_owned(),
+        "exec \"$@\"".to_owned(),
+        "butler".to_owned(),
+        program.to_owned(),
+    ]);
+    remote_parts.extend(args.iter().cloned());
+    shell_join(&remote_parts)
+}
+
+fn login_shell_script_command(args: &[String]) -> Result<String, String> {
+    let mut remote_parts = Vec::with_capacity(args.len() + 4);
+    remote_parts.extend([
+        "/bin/bash".to_owned(),
+        "-lc".to_owned(),
+        "exec sh -s -- \"$@\"".to_owned(),
+        "butler".to_owned(),
+    ]);
+    remote_parts.extend(args.iter().cloned());
+    shell_join(&remote_parts)
 }
 
 fn run_with_timeout(
@@ -320,6 +338,8 @@ fn format_process_failure(label: &str, status: ExitStatus, stderr: &[u8]) -> Str
         " Host-key verification failed. Connect once with ssh in a terminal and verify the host key."
     } else if lower.contains("too long for unix domain socket") {
         " The SSH control socket path is too long. Set ssh.controlPath to a short path such as /tmp/butler-%C."
+    } else if lower.contains("command not found") {
+        " A required remote command is not in the login-shell PATH. Verify ssh.target or set the Slurm executable paths explicitly."
     } else {
         ""
     };
@@ -352,6 +372,26 @@ fn clean_error(stderr: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn remote_commands_use_the_login_shell_environment() {
+        assert_eq!(
+            login_shell_command("squeue", &["--me".to_owned()]).unwrap(),
+            "/bin/bash -lc 'exec \"$@\"' butler squeue --me"
+        );
+    }
+
+    #[test]
+    fn remote_scripts_preserve_arguments_inside_the_login_shell() {
+        assert_eq!(
+            login_shell_script_command(&[
+                "~/ondemand/data".to_owned(),
+                "squeue".to_owned(),
+            ])
+            .unwrap(),
+            "/bin/bash -lc 'exec sh -s -- \"$@\"' butler '~/ondemand/data' squeue"
+        );
+    }
 
     #[test]
     fn shell_quote_leaves_safe_arguments_readable() {
