@@ -94,7 +94,7 @@ export default function App() {
     : error
       ? "Backend unavailable"
       : backendMode === "tauri"
-        ? "Mock cluster service"
+        ? "OpenSSH + Open OnDemand"
         : "Browser preview";
 
   return (
@@ -176,7 +176,7 @@ export default function App() {
           />
           <span>
             <strong>{connectionLabel}</strong>
-            <small>SSH and Open OnDemand integration comes next.</small>
+            <small>Slurm discovery; tunnels open only when requested.</small>
           </span>
         </footer>
       </aside>
