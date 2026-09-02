@@ -1,4 +1,10 @@
-import type { HardwareAllocation, Session, SessionGroup, SessionState } from "../types";
+import type {
+  HardwareAllocation,
+  Project,
+  Session,
+  SessionGroup,
+  SessionState,
+} from "../types";
 
 export type RuntimeTone = "normal" | "warning" | "urgent" | "inactive" | "neutral";
 
@@ -12,24 +18,45 @@ const STATUS_LABELS: Record<SessionState, string> = {
   unknown: "Unknown",
 };
 
-export function groupSessions(sessions: Session[]): SessionGroup[] {
-  const groups = new Map<string, SessionGroup>();
+export function groupSessions(
+  sessions: Session[],
+  projects: readonly Project[],
+): SessionGroup[] {
+  const groups = new Map<number, SessionGroup>();
+
+  for (const project of [...projects].sort(compareProjects)) {
+    groups.set(project.id, {
+      key: project.id.toString(),
+      projectId: project.id,
+      name: project.name,
+      remotePath: project.remotePath,
+      isDefault: project.isDefault,
+      sessions: [],
+    });
+  }
+
+  const defaultProject =
+    projects.find((project) => project.isDefault) ?? projects[0] ?? null;
 
   for (const session of sessions) {
-    const key = session.projectId?.toString() ?? "unassigned";
-    const current = groups.get(key);
+    const projectId = session.projectId ?? defaultProject?.id ?? 0;
+    let group = groups.get(projectId);
 
-    if (current) {
-      current.sessions.push(session);
-      continue;
+    if (!group) {
+      const project =
+        projects.find((candidate) => candidate.id === projectId) ?? defaultProject;
+      group = {
+        key: projectId.toString(),
+        projectId,
+        name: project?.name ?? "Unassigned",
+        remotePath: project?.remotePath ?? null,
+        isDefault: project?.isDefault ?? true,
+        sessions: [],
+      };
+      groups.set(projectId, group);
     }
 
-    groups.set(key, {
-      key,
-      name: session.projectName ?? "Unassigned",
-      remotePath: session.remotePath,
-      sessions: [session],
-    });
+    group.sessions.push(session);
   }
 
   return [...groups.values()];
@@ -139,4 +166,8 @@ export function hardwareLabels(hardware: HardwareAllocation): string[] {
   }
 
   return labels;
+}
+
+function compareProjects(left: Project, right: Project): number {
+  return left.sortOrder - right.sortOrder || left.id - right.id;
 }
