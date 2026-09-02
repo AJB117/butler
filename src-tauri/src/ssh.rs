@@ -294,10 +294,14 @@ fn shell_quote(value: &str) -> Result<String, String> {
 }
 
 fn default_control_path() -> String {
-    std::env::temp_dir()
-        .join("butler-%C.sock")
-        .to_string_lossy()
-        .into_owned()
+    if cfg!(unix) {
+        format!("/tmp/butler-{}-%C", std::process::id())
+    } else {
+        std::env::temp_dir()
+            .join("butler-%C.sock")
+            .to_string_lossy()
+            .into_owned()
+    }
 }
 
 fn format_process_failure(label: &str, status: ExitStatus, stderr: &[u8]) -> String {
@@ -314,6 +318,8 @@ fn format_process_failure(label: &str, status: ExitStatus, stderr: &[u8]) -> Str
         " The cluster is unreachable; check the university VPN."
     } else if lower.contains("host key verification failed") {
         " Host-key verification failed. Connect once with ssh in a terminal and verify the host key."
+    } else if lower.contains("too long for unix domain socket") {
+        " The SSH control socket path is too long. Set ssh.controlPath to a short path such as /tmp/butler-%C."
     } else {
         ""
     };
@@ -362,5 +368,14 @@ mod tests {
     #[test]
     fn shell_quote_rejects_newlines() {
         assert!(shell_quote("unsafe\nargument").is_err());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn default_control_path_avoids_long_platform_temp_directories() {
+        let path = default_control_path();
+        assert!(path.starts_with("/tmp/butler-"));
+        assert!(path.ends_with("-%C"));
+        assert!(path.len() < 64);
     }
 }
