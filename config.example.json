@@ -1,0 +1,21 @@
+{
+  "ssh": {
+    "target": "your-cluster-ssh-alias",
+    "binary": "ssh",
+    "configFile": null,
+    "port": null,
+    "connectTimeoutSeconds": 10,
+    "commandTimeoutSeconds": 30,
+    "controlPersistSeconds": 600,
+    "multiplex": true,
+    "controlPath": null
+  },
+  "ood": {
+    "dataRoot": "~/ondemand/data/sys/dashboard",
+    "appTokens": []
+  },
+  "slurm": {
+    "squeueBinary": "squeue",
+    "scancelBinary": "scancel"
+  }
+}
