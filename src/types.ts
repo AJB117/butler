@@ -42,3 +42,22 @@ export interface SessionGroup {
   remotePath: string | null;
   sessions: Session[];
 }
+
+export interface BackendStatus {
+  configured: boolean;
+  connected: boolean;
+  configPath: string;
+  sshTarget: string | null;
+  controlPath: string | null;
+  activeTunnels: number;
+  message: string | null;
+}
+
+export interface OpenSessionResult {
+  sessionId: string;
+  localPort: number;
+  url: string;
+  remoteHost: string;
+  remotePort: number;
+  password: string | null;
+}
