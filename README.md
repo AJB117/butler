@@ -144,10 +144,10 @@ Use the same `target`, `controlPersistSeconds`, and `controlPath` in `config.loc
 
 Butler does not probe every historical `connection.yml` file. Each refresh performs one SSH operation that:
 
-1. reads the small JSON records below `<dataRoot>/batch_connect/db`;
-2. asks Slurm for this user's pending, configuring, running, and completing jobs;
+1. reads the small JSON records from the standard `<dataRoot>/batch_connect/db` directory and any per-cluster `<dataRoot>/batch_connect/*/db` directories;
+2. asks Slurm for this user's jobs across visible and hidden partitions, expanding array elements into individual rows and preserving scheduler units;
 3. correlates OOD records with scheduler jobs by job ID; and
-4. returns only active Code Server sessions.
+4. removes terminal jobs and returns only active Code Server sessions.
 
 A routine refresh never reads or returns Code Server passwords.
 
