@@ -100,6 +100,8 @@ npm run tauri dev
 
 `ssh.target` may be a hostname, `user@host`, or an alias from `~/.ssh/config`. `configFile` and `port` are optional. Unix builds enable OpenSSH multiplexing by default; Windows builds do not.
 
+Butler runs remote commands through `/bin/bash -lc`, so the cluster's login-shell PATH and normal shell initialization are available to `squeue` and `scancel`. If a deployment still does not expose Slurm in that environment, set `slurm.squeueBinary` and `slurm.scancelBinary` to their absolute remote paths.
+
 `ood.dataRoot` defaults to Open OnDemand's standard dashboard data root. `ood.appTokens` is an optional exact allowlist of OOD app tokens such as `sys/bc_code_server`. When it is empty, Butler includes records whose token or title contains a common Code Server or VS Code spelling.
 
 The following environment variables override the file:
