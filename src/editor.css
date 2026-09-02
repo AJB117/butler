@@ -1,0 +1,72 @@
+.editor-stage--live {
+  position: relative;
+  display: block;
+}
+
+.editor-webview-host {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 1px;
+  min-height: 1px;
+  overflow: hidden;
+  background: #0f1620;
+}
+
+.editor-host-message {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  padding: 40px;
+  color: #8d9aac;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(50, 184, 245, 0.09), transparent 34%),
+    #0f1620;
+  text-align: center;
+}
+
+.editor-host-message strong {
+  color: #eaf1f8;
+  font-size: 17px;
+}
+
+.editor-host-message p {
+  display: flex;
+  max-width: 520px;
+  align-items: center;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.editor-host-message--error strong,
+.editor-host-message--error p {
+  color: #ffabb0;
+}
+
+.editor-host-spinner {
+  width: 30px;
+  height: 30px;
+  border: 2px solid rgba(121, 212, 255, 0.18);
+  border-top-color: var(--accent);
+  border-radius: 999px;
+  animation: spin 800ms linear infinite;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
